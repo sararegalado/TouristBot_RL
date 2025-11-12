@@ -75,6 +75,7 @@ class TouristBotEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         """Reinicia el entorno al estado inicial"""
+        # IMPORTANTE: Llamar a super().reset() primero para manejar la seed correctamente
         super().reset(seed=seed)
         
         # Permitir cambiar el objetivo desde options
@@ -87,8 +88,8 @@ class TouristBotEnv(gym.Env):
         # Generar lugares de forma aleatoria pero fija
         self._generate_places()
         
-        # Establecer el objetivo según el tipo
-        self.goal_pos = self.places[self.goal_type]
+        # Establecer el objetivo según el tipo (hacer copia para evitar referencias)
+        self.goal_pos = self.places[self.goal_type].copy()
         
         # Resetear métricas
         self.steps = 0
@@ -232,27 +233,32 @@ class TouristBotEnv(gym.Env):
     # ==================
     
     def _generate_places(self):
-        """Genera lugares en posiciones aleatorias del grid"""
+        """Genera lugares en posiciones aleatorias del grid usando el RNG del entorno"""
         self.places = {}
         
         # Restaurant en la mitad superior derecha
+        # Usamos self.np_random que es el RNG oficial de Gymnasium
+        # integers(low, high) genera números en [low, high)
         self.places["restaurant"] = [
-            random.randint(GRID_SIZE // 2, GRID_SIZE - 2),
-            random.randint(1, GRID_SIZE // 2)
+            int(self.np_random.integers(GRID_SIZE // 2, GRID_SIZE)),
+            int(self.np_random.integers(1, GRID_SIZE // 2 + 1))
         ]
         
         # Museum en la mitad superior izquierda
         self.places["museum"] = [
-            random.randint(1, GRID_SIZE // 2),
-            random.randint(1, GRID_SIZE // 2)
+            int(self.np_random.integers(1, GRID_SIZE // 2 + 1)),
+            int(self.np_random.integers(1, GRID_SIZE // 2 + 1))
         ]
         
         # Asegurar que no están en la misma posición
-        while self.places["restaurant"] == self.places["museum"]:
+        max_attempts = 10
+        attempts = 0
+        while self.places["restaurant"] == self.places["museum"] and attempts < max_attempts:
             self.places["museum"] = [
-                random.randint(1, GRID_SIZE // 2),
-                random.randint(1, GRID_SIZE // 2)
+                int(self.np_random.integers(1, GRID_SIZE // 2 + 1)),
+                int(self.np_random.integers(1, GRID_SIZE // 2 + 1))
             ]
+            attempts += 1
 
     def _take_action(self, action):
         """
